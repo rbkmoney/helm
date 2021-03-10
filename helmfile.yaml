@@ -194,3 +194,12 @@ releases:
 #    - {{ .Namespace | default "default" }}/cashier
 - name: questionary-aggr-proxy
   <<: *generic_stateless
+- name: cm-dudoser
+  <<: *generic_stateless
+  needs:
+    - {{ .Namespace | default "default" }}/claim-management
+#    - {{ .Namespace | default "default" }}/messages
+#    - {{ .Namespace | default "default" }}/file-storage
+    - {{ .Namespace | default "default" }}/questionary
+    - {{ .Namespace | default "default" }}/kafka
+#    - {{ .Namespace | default "default" }}/smtp
