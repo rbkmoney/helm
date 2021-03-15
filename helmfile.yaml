@@ -194,3 +194,7 @@ releases:
 #    - {{ .Namespace | default "default" }}/cashier
 - name: questionary-aggr-proxy
   <<: *generic_stateless
+- name: file-storage
+  <<: *generic_stateless
+  needs:
+#  - {{ .Namespace | default "default" }}/minio
