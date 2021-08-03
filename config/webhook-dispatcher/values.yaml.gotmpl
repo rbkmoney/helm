@@ -3,12 +3,12 @@
 replicaCount: 1
 
 image:
-  repository: docker.io/rbkmoney/magista
-  tag: 84f2ad8875317497db97ee6902bb624e47906164
+  repository: docker.io/rbkmoney/webhook-dispatcher
+  tag: 2d816921391da217e8fde45e8492319c4d791383
   pullPolicy: IfNotPresent
 
 runopts:
-  command: ["/opt/magista/entrypoint.sh"]
+  command: ["/opt/webhook-dispatcher/entrypoint.sh"]
 
 configMap:
   data:
@@ -27,15 +27,15 @@ volumes:
 
 volumeMounts:
   - name: config-volume
-    mountPath: /opt/magista/entrypoint.sh
+    mountPath: /opt/webhook-dispatcher/entrypoint.sh
     subPath: entrypoint.sh
     readOnly: true
   - name: config-volume
-    mountPath: /opt/magista/logback.xml
+    mountPath: /opt/webhook-dispatcher/logback.xml
     subPath: logback.xml
     readOnly: true
   - name: config-volume
-    mountPath: /opt/magista/loggers.xml
+    mountPath: /opt/webhook-dispatcher/loggers.xml
     subPath: loggers.xml
     readOnly: true
 
@@ -59,20 +59,20 @@ readinessProbe:
 podAnnotations:
   vault.hashicorp.com/role: "db-app"
   vault.hashicorp.com/agent-inject: "true"
-  vault.hashicorp.com/agent-inject-secret-application.properties: "database/creds/db-app-magista"
+  vault.hashicorp.com/agent-inject-secret-application.properties: "database/creds/db-app-webhook-dispatcher"
   vault.hashicorp.com/agent-inject-template-application.properties: |
-    {{`{{- with secret "database/creds/db-app-magista" -}}
-    spring.datasource.url=jdbc:postgresql://postgres-postgresql:5432/magista?sslmode=disable
+    {{`{{- with secret "database/creds/db-app-webhook-dispatcher" -}}
+    spring.datasource.url=jdbc:postgresql://postgres-postgresql:5432/webhook-dispatcher?sslmode=disable
     spring.datasource.username={{ .Data.username }}
     spring.datasource.password={{ .Data.password }}
-    flyway.url=jdbc:postgresql://postgres-postgresql:5432/magista?sslmode=disable
-    flyway.user={{ .Data.username }}
-    flyway.password={{ .Data.password }}
+    spring.flyway.url=jdbc:postgresql://postgres-postgresql:5432/webhook-dispatcher?sslmode=disable
+    spring.flyway.user={{ .Data.username }}
+    spring.flyway.password={{ .Data.password }}
     {{- end }}`}}
 
 metrics:
   serviceMonitor:
-    enabled: false
+    enabled: true
     namespace: {{ .Release.Namespace }}
     additionalLabels:
       release: prometheus
@@ -93,7 +93,12 @@ ciliumPolicies:
         kafka:
         - role: consume
           topics:
-            - mg-events-invoice
+            - webhooks
+            - webhook-first-retry
+            - webhook-second-retry
+            - webhook-third-retry
+            - webhook-last-retry
+            - webhook-dead-letter-queue
       type: TCP
     name: kafka
     namespace: {{ .Release.Namespace }}
@@ -102,18 +107,13 @@ ciliumPolicies:
       type: TCP
     name: vault
     namespace: {{ .Release.Namespace }}
-  - filters:
-    - port: 8022
-      type: TCP
-    name: columbus
-    namespace: {{ .Release.Namespace }}
-  - filters:
-    - port: 8022
-      type: TCP
-    name: hellgate
-    namespace: {{ .Release.Namespace }}
-  - filters:
-    - port: 8022
-      type: TCP
-    name: payouter
-    namespace: {{ .Release.Namespace }}
+
+##In case of kafka mTLS auth move it to vault template
+# {{- /*
+#      kafka.ssl.enabled={{ kafka.ssl.enable }}
+#      kafka.ssl.key-store-location=/opt/{{ service_name }}/kafka-keystore.p12
+#      kafka.ssl.key-store-password="{{ service.keystore.pass }}"
+#      kafka.ssl.key-password="{{ service.keystore.pass }}"
+#      kafka.ssl.trust-store-location=/opt/{{ service_name }}/kafka-truststore.p12
+#      kafka.ssl.trust-store-password="{{ kafka.truststore.java.pass }}"
+# */ -}}

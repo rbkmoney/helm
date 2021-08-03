@@ -3,15 +3,15 @@
 replicaCount: 1
 
 image:
-  repository: docker.io/rbkmoney/magista
-  tag: 84f2ad8875317497db97ee6902bb624e47906164
+  repository: docker.io/rbkmoney/reporter
+  tag: bd02fe73ce7e8ac346492cbd4530d54185b88af1
   pullPolicy: IfNotPresent
 
 runopts:
-  command: ["/opt/magista/entrypoint.sh"]
+  command: ["/opt/reporter/entrypoint.sh"]
 
 configMap:
-  data:
+  data: 
     entrypoint.sh: |
       {{- readFile "entrypoint.sh" | nindent 6 }}
     loggers.xml: |
@@ -27,15 +27,15 @@ volumes:
 
 volumeMounts:
   - name: config-volume
-    mountPath: /opt/magista/entrypoint.sh
+    mountPath: /opt/reporter/entrypoint.sh
     subPath: entrypoint.sh
     readOnly: true
   - name: config-volume
-    mountPath: /opt/magista/logback.xml
+    mountPath: /opt/reporter/logback.xml
     subPath: logback.xml
     readOnly: true
   - name: config-volume
-    mountPath: /opt/magista/loggers.xml
+    mountPath: /opt/reporter/loggers.xml
     subPath: loggers.xml
     readOnly: true
 
@@ -59,20 +59,20 @@ readinessProbe:
 podAnnotations:
   vault.hashicorp.com/role: "db-app"
   vault.hashicorp.com/agent-inject: "true"
-  vault.hashicorp.com/agent-inject-secret-application.properties: "database/creds/db-app-magista"
+  vault.hashicorp.com/agent-inject-secret-application.properties: "database/creds/db-app-reporter"
   vault.hashicorp.com/agent-inject-template-application.properties: |
-    {{`{{- with secret "database/creds/db-app-magista" -}}
-    spring.datasource.url=jdbc:postgresql://postgres-postgresql:5432/magista?sslmode=disable
+    {{`{{- with secret "database/creds/db-app-reporter" -}}
+    spring.datasource.url=jdbc:postgresql://postgres-postgresql:5432/reporter?sslmode=disable
     spring.datasource.username={{ .Data.username }}
     spring.datasource.password={{ .Data.password }}
-    flyway.url=jdbc:postgresql://postgres-postgresql:5432/magista?sslmode=disable
+    flyway.url=jdbc:postgresql://postgres-postgresql:5432/reporter?sslmode=disable
     flyway.user={{ .Data.username }}
     flyway.password={{ .Data.password }}
     {{- end }}`}}
 
 metrics:
   serviceMonitor:
-    enabled: false
+    enabled: true
     namespace: {{ .Release.Namespace }}
     additionalLabels:
       release: prometheus
@@ -94,8 +94,14 @@ ciliumPolicies:
         - role: consume
           topics:
             - mg-events-invoice
+            - mg-events-party
       type: TCP
     name: kafka
+    namespace: {{ .Release.Namespace }}
+  - filters:
+    - port: 9000
+      type: TCP
+    name: minio
     namespace: {{ .Release.Namespace }}
   - filters:
     - port: 8200
@@ -105,15 +111,33 @@ ciliumPolicies:
   - filters:
     - port: 8022
       type: TCP
-    name: columbus
+    name: hellgate
     namespace: {{ .Release.Namespace }}
   - filters:
     - port: 8022
       type: TCP
-    name: hellgate
+    name: magista
     namespace: {{ .Release.Namespace }}
   - filters:
     - port: 8022
       type: TCP
     name: payouter
     namespace: {{ .Release.Namespace }}
+  - filters:
+    - port: 8022
+      type: TCP
+    name: dominant
+    namespace: {{ .Release.Namespace }}
+
+
+##In case of kafka mTLS auth move it to vault template
+# {{- /*
+#      kafka.ssl.enabled={{ kafka.ssl.enable }}
+#      kafka.ssl.key-store-location=/opt/{{ service_name }}/kafka-keystore.p12
+#      kafka.ssl.key-store-password="{{ service.keystore.pass }}"
+#      kafka.ssl.key-password="{{ service.keystore.pass }}"
+#      kafka.ssl.trust-store-location=/opt/{{ service_name }}/kafka-truststore.p12
+#      kafka.ssl.trust-store-password="{{ kafka.truststore.java.pass }}"
+#      storage.accessKey=test \
+#      storage.secretKey=test \
+# */ -}}

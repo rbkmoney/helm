@@ -187,7 +187,7 @@ releases:
   needs:
     - {{ .Namespace | default "default" }}/vault
     - {{ .Namespace | default "default" }}/kafka
-#    - {{ .Namespace | default "default" }}/columbus
+    - {{ .Namespace | default "default" }}/columbus
     - {{ .Namespace | default "default" }}/payouter
 - name: questionary
   <<: *generic_stateless
@@ -209,6 +209,30 @@ releases:
 #    - {{ .Namespace | default "default" }}/columbus
     - {{ .Namespace | default "default" }}/hellgate
 #    - {{ .Namespace | default "default" }}/payouter
+- name: reporter
+  <<: *generic_stateless
+  needs:
+    - {{ .Namespace | default "default" }}/vault
+    - {{ .Namespace | default "default" }}/hellgate
+    - {{ .Namespace | default "default" }}/payouter
+    - {{ .Namespace | default "default" }}/dominant
+ - name: wallets-hooker
+   <<: *generic_stateless
+   needs:
+     - {{ .Namespace | default "default" }}/vault
+     - {{ .Namespace | default "default" }}/kafka
+- name: webhook-dispatcher
+  <<: *generic_stateless
+  needs:
+    - {{ .Namespace | default "default" }}/vault
+    - {{ .Namespace | default "default" }}/kafka
+- name: fistful-reporter
+  <<: *generic_stateless
+  needs:
+    - {{ .Namespace | default "default" }}/vault
+    - {{ .Namespace | default "default" }}/kafka
+    - {{ .Namespace | default "default" }}/hellgate
+#    - {{ .Namespace | default "default" }}/file-storage
 - name: payouter
   <<: *generic_stateless_json
   needs:
